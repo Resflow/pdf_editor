@@ -24,7 +24,10 @@ module PdfEditor
     end
 
     def call
-      return if resource.nil? || page.nil? || rotate.nil?
+      if resource.nil? || page.nil? || rotate.nil?
+        raise Errors::ArgumentMissingError, 
+              "resource: #{resource} \n page: #{page} \n rotate: #{rotate}"
+      end
       PdfEditor::Resource.new(
         create_tempfile {run_command}
       )
@@ -39,12 +42,9 @@ module PdfEditor
     end
 
     def get_page_count
-      pages_count = resource.page_count
-      if page_count == 0
-        raise PageCountCommandError, "Error returning the number of pages for #{resource.path}" 
-      end
-      if page_count < 1 || page > page_count
-        raise PageRangeError, "Page #{page} does not exist. There are #{page_count} pages "
+      page_count = resource.page_count
+      if page_count == 0 || page > page_count
+        raise Errors::PageRangeError, "Page #{page} does not exist. There are #{page_count} pages "
       end
       page_count
     end
