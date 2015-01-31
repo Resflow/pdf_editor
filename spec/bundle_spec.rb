@@ -38,58 +38,121 @@ module PdfEditor
 
     end
 
-    # def merge_resource_with_title_page(resource)
-    #   title_page_resource = create_title_page(resource)
-    #   PdfEditor::Merge.call({
-    #     resources: [title_page_resource, resource], 
-    #     merged_name: title_page_resource.name
-    #   })
-    # end
+    describe '#call' do 
+
+      before do 
+        @service.stub(:create_title_pages) { nil }
+        @service.stub(:create_table_of_contents) { nil }
+        @service.stub(:bundle_documents) { nil }
+      end
+
+      it 'calls #create_title_pages' do 
+        expect(@service).to receive(:create_title_pages)
+        @service.call
+      end
+
+      it 'calls #create_table_of_contents' do 
+        expect(@service).to receive(:create_table_of_contents)
+        @service.call
+      end
+
+      it 'calls #bundle_documents' do 
+        expect(@service).to receive(:bundle_documents)
+        @service.call 
+      end
+
+    end
+
+    describe '#create_title_pages' do 
+
+      context 'when with_title_pages' do 
+
+        it 'creates title pages' do 
+          service = PdfEditor::Bundle.new(
+            resources: [@resource_1, @resource_2], 
+            title: 'TOC', 
+            with_toc: true, 
+            with_title_pages: true
+          )
+          service.send(:create_title_pages)
+          ready_for_toc = service.send(:ready_for_toc)
+          page_count = ready_for_toc.inject(0) {|sum, resource| sum + resource.page_count}
+          expect(page_count).to eq 9
+        end
+
+      end
+
+      context 'when not with_title_pages' do 
+
+        it 'does not create title pages' do 
+          service = PdfEditor::Bundle.new(
+            resources: [@resource_1, @resource_2], 
+            title: 'TOC', 
+            with_toc: true, 
+            with_title_pages: false
+          )
+          service.send(:create_title_pages)
+          ready_for_toc = service.send(:ready_for_toc)
+          page_count = ready_for_toc.inject(0) {|sum, resource| sum + resource.page_count}
+          expect(page_count).to eq 7
+        end
+
+      end
+
+    end
+
+    describe '#create_table_of_contents' do 
+
+      it 'does nothing if ready_for_toc is empty' do
+        service = PdfEditor::Bundle.new(
+          resources: [], 
+          title: 'TOC', 
+          with_toc: true, 
+          with_title_pages: false
+        )
+        service.send(:create_table_of_contents)
+        expect(service.send(:table_of_contents)).to be_nil
+      end
+
+      it 'does nothing if not with_toc' do
+        service = PdfEditor::Bundle.new(
+          resources: [@resource_1, @resource_2], 
+          title: 'TOC', 
+          with_toc: false, 
+          with_title_pages: false
+        )
+        service.send(:create_table_of_contents)
+        expect(service.send(:table_of_contents)).to be_nil
+      end
+
+      it 'sets table_of_contents to generated table_of_contents' do 
+        service = PdfEditor::Bundle.new(
+          resources: [@resource_1, @resource_2], 
+          title: 'TOC', 
+          with_toc: true, 
+          with_title_pages: true
+        )
+        service.stub(:ready_for_toc) {[@resource_1, @resource_2]}
+        service.send(:create_table_of_contents)
+        expect(service.send(:table_of_contents)).to be_instance_of PdfEditor::Resource
+      end
+
+    end
+
+    describe '#bundle_documents' do 
+
+      it 'merges the table_of_contents with the contents' do 
+        service = PdfEditor::Bundle.new(
+          resources: [@resource_1, @resource_2], 
+          title: 'TOC', 
+          with_toc: true, 
+          with_title_pages: true
+        )
+        ret = service.call
+        expect(ret.page_count).to eq 10
+      end
+
+    end
 
   end
 end
-
-
-
-
-# def call
-#   create_title_pages
-#   create_table_of_contents
-#   bundle_documents
-# end
-
-
-# def bundle_documents
-#   bundle_resources = ready_for_toc
-#   bundle_resources.unshift(table_of_contents) if table_of_contents 
-#   PdfEditor::Merge.call({resources: bundle_resources})
-# end
-
-# def create_table_of_contents
-#   return if ready_for_toc.empty?
-#   return unless with_toc
-
-#   self.table_of_contents = PdfEditor::TableOfContents.call({resources: ready_for_toc})
-# end
-
-# def create_title_pages
-#   ready_for_toc.clear
-
-#   if with_title_pages
-
-#     resources.each do |resource|
-#       new_resource = merge_resource_with_title_page(resource)
-#       ready_for_toc << new_resource
-#     end
-
-#   else
-#     self.ready_for_toc = resources.dup
-#   end
-
-#   ready_for_toc
-# end
-
-
-
-
-

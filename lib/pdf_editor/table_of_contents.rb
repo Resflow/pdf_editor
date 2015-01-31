@@ -14,7 +14,10 @@ module PdfEditor
     end
 
     def call
-      return if resources.empty?
+      if resources.empty?
+        raise PdfEditor::Errors::ResourcesEmptyError, 
+              'You must have at least one resource to create a table of contents'
+      end
       PdfEditor::Resource.new(
         create_tempfile {create_pdf}
       )
